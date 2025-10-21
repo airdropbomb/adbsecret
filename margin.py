@@ -113,40 +113,28 @@ def calculate_loop_profit_loss(before_balance, after_balance, loop_number):
     return loop_profit
 
 def print_parallel_header(loop_number, total_loops=80, mode="PARALLEL", remaining_time="06:08:35"):
-    """Print responsive parallel trading header"""
+    """Print responsive parallel trading header without box borders"""
     clear_screen()
     
     # Get terminal width for responsive design
     terminal_width, _ = get_terminal_size()
     
-    # Adjust layout based on terminal width
+    # Full layout for wide screens
     if terminal_width >= 100:
-        # Full layout for wide screens
         title = "PARALLEL TRADING STATUS"
-        border_length = min(120, terminal_width - 2)
-        padding = (border_length - len(title) - 2) // 2
-        print(f"{Colors.BOLD}{Colors.BLUE}┌{'─' * padding}{title}{'─' * (border_length - len(title) - 2 - padding)}┐{Colors.END}")
-        
         phase_info = f"Phase: Loop : {loop_number:2d} | Remaining Time: {remaining_time}"
         trader_info = f"BTC-Trader @yannaingko2"
-        available_width = border_length - len(phase_info) - len(trader_info) - 4
-        if available_width > 10:
-            center_padding = available_width // 2
-            print(f"{Colors.BOLD}{Colors.BLUE}│{Colors.END} {Colors.YELLOW}{phase_info}{Colors.END}{' ' * center_padding}{Colors.CYAN}{trader_info}{Colors.END} {Colors.BOLD}{Colors.BLUE}│{Colors.END}")
-        else:
-            # Stack the information if not enough width
-            print(f"{Colors.BOLD}{Colors.BLUE}│{Colors.END} {Colors.YELLOW}{phase_info}{Colors.END}{' ' * (border_length - len(phase_info) - 4)} {Colors.BOLD}{Colors.BLUE}│{Colors.END}")
-            print(f"{Colors.BOLD}{Colors.BLUE}│{Colors.END} {Colors.CYAN}{trader_info:^{border_length-4}}{Colors.END} {Colors.BOLD}{Colors.BLUE}│{Colors.END}")
-        
-        print(f"{Colors.BOLD}{Colors.BLUE}└{'─' * border_length}┘{Colors.END}")
+        print(f"{Colors.BOLD}{Colors.BLUE}{title}{Colors.END}")
+        print(f"{Colors.YELLOW}{phase_info}{Colors.END}  {Colors.CYAN}{trader_info}{Colors.END}")
+        print(f"{Colors.BOLD}{Colors.BLUE}{'=' * min(80, terminal_width)}{Colors.END}")
+    
+    # Compact layout for narrow screens
     else:
-        # Compact layout for narrow screens
         title = "TRADING STATUS"
-        border_length = min(80, terminal_width - 2)
-        print(f"{Colors.BOLD}{Colors.BLUE}┌{'─' * ((border_length - len(title) - 2) // 2)}{title}{'─' * ((border_length - len(title) - 2) // 2)}┐{Colors.END}")
-        print(f"{Colors.BOLD}{Colors.BLUE}│{Colors.END} Loop:{Colors.CYAN}{loop_number:2d}{Colors.END} Time:{Colors.CYAN}{remaining_time}{Colors.END} Trader:{Colors.CYAN}@yannaingko2{Colors.END}{' ' * (border_length-40)} {Colors.BOLD}{Colors.BLUE}│{Colors.END}")
-        print(f"{Colors.BOLD}{Colors.BLUE}└{'─' * border_length}┘{Colors.END}")
-
+        print(f"{Colors.BOLD}{Colors.BLUE}{title}{Colors.END}")
+        print(f"Loop: {Colors.CYAN}{loop_number:2d}{Colors.END} | Time: {Colors.CYAN}{remaining_time}{Colors.END} | Trader: {Colors.CYAN}@yannaingko2{Colors.END}")
+        print(f"{Colors.BOLD}{Colors.BLUE}{'=' * min(40, terminal_width)}{Colors.END}")
+        
 def print_parallel_status_table(pairs_status, loop_number, remaining_time="06:08:35"):
     """Print compact one-line per pair status display with perfect column alignment"""
     
@@ -1012,3 +1000,4 @@ if __name__ == "__main__":
         print(f"\nScript stopped")
     except Exception as e:
         print(f"\nError: {e}")
+
