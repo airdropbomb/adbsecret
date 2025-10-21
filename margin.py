@@ -146,155 +146,111 @@ def print_parallel_header(loop_number, total_loops=80, mode="PARALLEL", remainin
         print(f"{Colors.BOLD}{Colors.BLUE}└{'─' * border_length}┘{Colors.END}")
 
 def print_parallel_status_table(pairs_status, loop_number, remaining_time="06:08:35"):
-    """Print clean parallel trading status display with proper borders"""
+    """Print compact one-line per pair status display with perfect column alignment"""
     
     # Get terminal size for responsive design
     terminal_width, terminal_height = get_terminal_size()
     
-    # Fixed column widths for stability
+    # Print compact header
+    print(f"\n{Colors.BOLD}{Colors.CYAN}=== PARALLEL TRADING STATUS ==={Colors.END}")
+    print(f"Loop: {Colors.YELLOW}{loop_number:2d}/80{Colors.END} | Remaining: {Colors.YELLOW}{remaining_time}{Colors.END} | Trader: {Colors.CYAN}@yannaingko2{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 35}{Colors.END}")
+    
+    # Fixed column widths for consistent alignment
     col_no = 4
-    col_pairs = 12
-    col_status = 18
+    col_pair = 12
+    col_status = 16
     col_market = 12
     col_value = 10
     col_profit = 10
     col_loss = 10
-    col_total_profit = 12
-    col_total_loss = 12
     
-    # Calculate total table width
-    total_width = (col_no + col_pairs + col_status + col_market + col_value + 
-                  col_profit + col_loss + col_total_profit + col_total_loss + 18)
-    
-    # Adjust if table is too wide for terminal
-    if total_width > terminal_width:
-        scale_factor = terminal_width / total_width
-        col_no = max(3, int(col_no * scale_factor))
-        col_pairs = max(8, int(col_pairs * scale_factor))
-        col_status = max(12, int(col_status * scale_factor))
-        col_market = max(8, int(col_market * scale_factor))
-        col_value = max(8, int(col_value * scale_factor))
-        col_profit = max(8, int(col_profit * scale_factor))
-        col_loss = max(8, int(col_loss * scale_factor))
-        col_total_profit = max(10, int(col_total_profit * scale_factor))
-        col_total_loss = max(10, int(col_total_loss * scale_factor))
-    
-    # Print table header with proper borders
-    print(f"{Colors.BOLD}{Colors.BLUE}┌{'─' * col_no}┬{'─' * col_pairs}┬{'─' * col_status}┬{'─' * col_market}┬{'─' * col_value}┬{'─' * col_profit}┬{'─' * col_loss}┬{'─' * col_total_profit}┬{'─' * col_total_loss}┐{Colors.END}")
-    
-    # Column headers
-    headers = [
-        f"{Colors.BOLD}{Colors.CYAN}{'NO':^{col_no}}{Colors.END}",
-        f"{Colors.BOLD}{Colors.CYAN}{'PAIRS':^{col_pairs}}{Colors.END}",
-        f"{Colors.BOLD}{Colors.CYAN}{'STATUS':^{col_status}}{Colors.END}",
-        f"{Colors.BOLD}{Colors.CYAN}{'MARKET':^{col_market}}{Colors.END}",
-        f"{Colors.BOLD}{Colors.CYAN}{'VALUE':^{col_value}}{Colors.END}",
-        f"{Colors.BOLD}{Colors.CYAN}{'PROFIT':^{col_profit}}{Colors.END}",
-        f"{Colors.BOLD}{Colors.CYAN}{'LOSS':^{col_loss}}{Colors.END}",
-        f"{Colors.BOLD}{Colors.CYAN}{'T_PROFIT':^{col_total_profit}}{Colors.END}",
-        f"{Colors.BOLD}{Colors.CYAN}{'T_LOSS':^{col_total_loss}}{Colors.END}"
-    ]
-    
-    header_line = f"{Colors.BOLD}{Colors.BLUE}│{Colors.END}" + f"{Colors.BOLD}{Colors.BLUE}│{Colors.END}".join(headers) + f"{Colors.BOLD}{Colors.BLUE}│{Colors.END}"
-    print(header_line)
-    
-    print(f"{Colors.BOLD}{Colors.BLUE}├{'─' * col_no}┼{'─' * col_pairs}┼{'─' * col_status}┼{'─' * col_market}┼{'─' * col_value}┼{'─' * col_profit}┼{'─' * col_loss}┼{'─' * col_total_profit}┼{'─' * col_total_loss}┤{Colors.END}")
-    
-    # Data rows
-    active_pairs = [pair for pair, status in pairs_status.items() if status['status'] not in ['STOPPED', 'No Balance']]
+    # Data rows - one line per pair with perfect column alignment
+    active_count = 0
     
     for i, (pair, status_info) in enumerate(pairs_status.items(), 1):
         # Get status with appropriate color
         status = status_info['status']
         if status == "Transfer OP":
-            status_display = f"{Colors.YELLOW}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.YELLOW}{status:<{col_status}}{Colors.END}"
         elif status == "Transfer Completed":
-            status_display = f"{Colors.GREEN}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.GREEN}{status:<{col_status}}{Colors.END}"
         elif status == "No Balance":
-            status_display = f"{Colors.RED}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.RED}{status:<{col_status}}{Colors.END}"
         elif status == "Waiting Manual":
-            status_display = f"{Colors.BLUE}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.BLUE}{status:<{col_status}}{Colors.END}"
         elif status == "STOPPED":
-            status_display = f"{Colors.RED}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.RED}{status:<{col_status}}{Colors.END}"
         elif status == "Completed":
-            status_display = f"{Colors.GREEN}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.GREEN}{status:<{col_status}}{Colors.END}"
         elif "FAILED" in status:
-            status_display = f"{Colors.RED}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.RED}{status:<{col_status}}{Colors.END}"
         elif "WORKING" in status:
-            status_display = f"{Colors.YELLOW}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.YELLOW}{status:<{col_status}}{Colors.END}"
         elif "WAITING" in status:
-            status_display = f"{Colors.BLUE}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.BLUE}{status:<{col_status}}{Colors.END}"
         else:
-            status_display = f"{Colors.CYAN}{status:^{col_status}}{Colors.END}"
+            status_display = f"{Colors.CYAN}{status:<{col_status}}{Colors.END}"
         
-        # Format data with proper padding and truncation
-        no_display = f"{Colors.CYAN}{i:^{col_no}}{Colors.END}"
+        # Count active pairs
+        if status not in ['STOPPED', 'No Balance']:
+            active_count += 1
         
+        # Format pair name
         pair_name = get_display_name(pair)
-        if len(pair_name) > col_pairs:
-            pair_name = pair_name[:col_pairs-2] + ".."
-        pair_display = f"{pair_name:^{col_pairs}}"
+        if len(pair_name) > col_pair:
+            pair_name = pair_name[:col_pair-2] + ".."
+        pair_display = f"{Colors.WHITE}{pair_name:<{col_pair}}{Colors.END}"
         
+        # Get market price
         market_price = status_info.get('market_price', '0.00000000')
-        if len(market_price) > col_market:
-            market_price = market_price[:col_market-2] + ".."
-        market_display = f"{market_price:^{col_market}}"
+        if market_price == '0.00000000' or market_price == '-':
+            market_display = f"{Colors.GRAY}{'N/A':<{col_market}}{Colors.END}"
+        else:
+            market_display = f"{market_price:<{col_market}}"
         
-        value_display_val = status_info.get('value', '$0.000000')
-        if len(value_display_val) > col_value:
-            value_display_val = value_display_val[:col_value-2] + ".."
-        value_display = f"{value_display_val:^{col_value}}"
+        # Get value
+        value_display = status_info.get('value', '$0.000000')
+        if len(value_display) > col_value:
+            value_display = value_display[:col_value-2] + ".."
+        value_display = f"{value_display:<{col_value}}"
         
-        # Get profit/loss data
+        # Get profit/loss with colors
         profit = status_info.get('profit', '$0.00000')
         loss = status_info.get('loss', '$0.00000')
         
-        # Get total profit/loss for this pair
-        total_profit_val = status_info.get('total_profit', '$0.00000')
-        total_loss_val = status_info.get('total_loss', '$0.00000')
-        
-        # Color coding - PROFIT in GREEN, LOSS in RED
         if profit != '$0.00000' and profit != '' and profit != '$0.00000':
-            profit_display = f"{Colors.GREEN}{profit:^{col_profit}}{Colors.END}"
+            profit_display = f"{Colors.GREEN}{profit:<{col_profit}}{Colors.END}"
         else:
-            profit_display = f"{profit:^{col_profit}}"
+            profit_display = f"{profit:<{col_profit}}"
             
         if loss != '$0.00000' and loss != '' and loss != '$0.00000':
-            loss_display = f"{Colors.RED}{loss:^{col_loss}}{Colors.END}"
+            loss_display = f"{Colors.RED}{loss:<{col_loss}}{Colors.END}"
         else:
-            loss_display = f"{loss:^{col_loss}}"
-            
-        if total_profit_val != '$0.00000' and total_profit_val != '' and total_profit_val != '$0.00000':
-            total_profit_display = f"{Colors.GREEN}{total_profit_val:^{col_total_profit}}{Colors.END}"
-        else:
-            total_profit_display = f"{total_profit_val:^{col_total_profit}}"
-            
-        if total_loss_val != '$0.00000' and total_loss_val != '' and total_loss_val != '$0.00000':
-            total_loss_display = f"{Colors.RED}{total_loss_val:^{col_total_loss}}{Colors.END}"
-        else:
-            total_loss_display = f"{total_loss_val:^{col_total_loss}}"
+            loss_display = f"{loss:<{col_loss}}"
         
-        # Create row data
-        row_data = [
-            no_display,
-            pair_display,
-            status_display,
-            market_display,
-            value_display,
-            profit_display,
-            loss_display,
-            total_profit_display,
-            total_loss_display
-        ]
+        # Build the line with perfect alignment
+        no_display = f"[{Colors.CYAN}{i:02d}{Colors.END}]"
         
-        row_line = f"{Colors.BOLD}{Colors.BLUE}│{Colors.END}" + f"{Colors.BOLD}{Colors.BLUE}│{Colors.END}".join(row_data) + f"{Colors.BOLD}{Colors.BLUE}│{Colors.END}"
-        print(row_line)
+        line = f"{no_display:<{col_no+2}} {pair_display} | {status_display} | mkt:{market_display} | val:{value_display} | P:{profit_display} | L:{loss_display}"
+        
+        # Ensure line doesn't exceed terminal width
+        line = line.strip()
+        if len(line) > terminal_width:
+            line = line[:terminal_width-3] + "..."
+        
+        print(line)
     
-    # Complete bottom border
-    print(f"{Colors.BOLD}{Colors.BLUE}└{'─' * col_no}┴{'─' * col_pairs}┴{'─' * col_status}┴{'─' * col_market}┴{'─' * col_value}┴{'─' * col_profit}┴{'─' * col_loss}┴{'─' * col_total_profit}┴{'─' * col_total_loss}┘{Colors.END}")
+    # Show summary with responsive formatting
+    total_pairs = len(pairs_status)
+    if terminal_width >= 80:
+        summary = f"{Colors.CYAN}Active: {active_count}/{total_pairs} | Stopped: {total_pairs - active_count} | Loop: {loop_number:2d}/80 | Time: {remaining_time}{Colors.END}"
+    elif terminal_width >= 60:
+        summary = f"{Colors.CYAN}A:{active_count}/{total_pairs} | S:{total_pairs - active_count} | L:{loop_number:2d}/80 | T:{remaining_time}{Colors.END}"
+    else:
+        summary = f"{Colors.CYAN}A:{active_count}/{total_pairs} L:{loop_number:2d} T:{remaining_time}{Colors.END}"
     
-    # Show active pairs count
-    print(f"\n{Colors.CYAN}Active Pairs: {len(active_pairs)}/{len(pairs_status)} | Stopped: {len(pairs_status) - len(active_pairs)}{Colors.END}")
+    print(f"\n{summary}")
 
 def calculate_transfer_amount(symbol):
     """Calculate transfer amount using new formula: ((btc price × 0.0000001) - TRANSFER_ADJUSTMENT) ÷ coin price"""
@@ -308,7 +264,7 @@ def calculate_transfer_amount(symbol):
             return 'USDT', amount, amount, 'Default'
         
         step1 = btc_price * Decimal('0.0000001')
-        step2 = step1 - TRANSFER_ADJUSTMENT  # Changed from hardcoded 0.0007
+        step2 = step1 - TRANSFER_ADJUSTMENT
         
         # Ensure minimum amount
         if step2 <= Decimal('0'):
@@ -327,7 +283,7 @@ def calculate_transfer_amount(symbol):
         
         # New formula: ((btc price × 0.0000001) - TRANSFER_ADJUSTMENT) ÷ coin price
         step1 = btc_price * Decimal('0.0000001')
-        step2 = step1 - TRANSFER_ADJUSTMENT  # Changed from hardcoded 0.0007
+        step2 = step1 - TRANSFER_ADJUSTMENT
         
         # Ensure minimum USDT value
         if step2 <= Decimal('0'):
@@ -505,33 +461,51 @@ def wait_for_manual_close_parallel(loop_number, pairs_status, remaining_time="06
     time.sleep(2)
 
 def print_balance_display(before_balance, after_balance, loop_profit):
-    """Print clean balance display without borders"""
+    """Print clean balance display without borders - FIXED to prevent full overwrite"""
     # Calculate net difference
     net_difference = TOTAL_PROFIT - TOTAL_LOSS
     
-    print(f"\n{Colors.BOLD}{Colors.CYAN}=== LOOP RESULTS ==={Colors.END}")
-    print(f"Before Balance: {Colors.YELLOW}${before_balance:.5f}{Colors.END}")
-    print(f"After Balance:  {Colors.YELLOW}${after_balance:.5f}{Colors.END}")
+    # Get terminal width for responsive design
+    terminal_width, _ = get_terminal_size()
     
-    if loop_profit > Decimal('0'):
-        print(f"Loop P/L:      {Colors.GREEN}+${loop_profit:.5f}{Colors.END}")
-    elif loop_profit < Decimal('0'):
-        print(f"Loop P/L:      {Colors.RED}-${abs(loop_profit):.5f}{Colors.END}")
+    if terminal_width >= 80:
+        # Full display for wide terminals
+        print(f"\n{Colors.BOLD}{Colors.CYAN}=== LOOP RESULTS ==={Colors.END}")
+        print(f"Before Balance: {Colors.YELLOW}${before_balance:.5f}{Colors.END}")
+        print(f"After Balance:  {Colors.YELLOW}${after_balance:.5f}{Colors.END}")
+        
+        if loop_profit > Decimal('0'):
+            print(f"Loop P/L:      {Colors.GREEN}+${loop_profit:.5f}{Colors.END}")
+        elif loop_profit < Decimal('0'):
+            print(f"Loop P/L:      {Colors.RED}-${abs(loop_profit):.5f}{Colors.END}")
+        else:
+            print(f"Loop P/L:      ${loop_profit:.5f}")
+        
+        print(f"Total Profit:  {Colors.GREEN}${TOTAL_PROFIT:.5f}{Colors.END} (Qty: {Colors.CYAN}{PROFIT_QTY:2d}{Colors.END})")
+        print(f"Total Loss:    {Colors.RED}${TOTAL_LOSS:.5f}{Colors.END} (Qty: {Colors.CYAN}{LOSS_QTY:2d}{Colors.END})")
+        
+        # Add NET DIFFERENCE (Total Profit - Total Loss)
+        if net_difference > Decimal('0'):
+            print(f"Net P/L:       {Colors.GREEN}+${net_difference:.5f}{Colors.END}")
+        elif net_difference < Decimal('0'):
+            print(f"Net P/L:       {Colors.RED}-${abs(net_difference):.5f}{Colors.END}")
+        else:
+            print(f"Net P/L:       ${net_difference:.5f}")
+        
+        print(f"{Colors.BOLD}{Colors.CYAN}==================={Colors.END}")
     else:
-        print(f"Loop P/L:      ${loop_profit:.5f}")
-    
-    print(f"Total Profit:  {Colors.GREEN}${TOTAL_PROFIT:.5f}{Colors.END} (Qty: {Colors.CYAN}{PROFIT_QTY:2d}{Colors.END})")
-    print(f"Total Loss:    {Colors.RED}${TOTAL_LOSS:.5f}{Colors.END} (Qty: {Colors.CYAN}{LOSS_QTY:2d}{Colors.END})")
-    
-    # Add NET DIFFERENCE (Total Profit - Total Loss)
-    if net_difference > Decimal('0'):
-        print(f"Net P/L:       {Colors.GREEN}+${net_difference:.5f}{Colors.END}")
-    elif net_difference < Decimal('0'):
-        print(f"Net P/L:       {Colors.RED}-${abs(net_difference):.5f}{Colors.END}")
-    else:
-        print(f"Net P/L:       ${net_difference:.5f}")
-    
-    print(f"{Colors.BOLD}{Colors.CYAN}==================={Colors.END}")
+        # Compact display for narrow terminals
+        print(f"\n{Colors.BOLD}{Colors.CYAN}=== RESULTS ==={Colors.END}")
+        print(f"Before: {Colors.YELLOW}${before_balance:.3f}{Colors.END}")
+        print(f"After:  {Colors.YELLOW}${after_balance:.3f}{Colors.END}")
+        
+        if loop_profit > Decimal('0'):
+            print(f"Loop:   {Colors.GREEN}+${loop_profit:.3f}{Colors.END}")
+        elif loop_profit < Decimal('0'):
+            print(f"Loop:   {Colors.RED}-${abs(loop_profit):.3f}{Colors.END}")
+        
+        print(f"Profit: {Colors.GREEN}${TOTAL_PROFIT:.3f}{Colors.END} (P:{PROFIT_QTY})")
+        print(f"Loss:   {Colors.RED}${TOTAL_LOSS:.3f}{Colors.END} (L:{LOSS_QTY})")
 
 def run_parallel_trading_loop(selected_pairs):
     """Run trading loop in parallel mode with immediate profit/loss display"""
@@ -790,6 +764,7 @@ def wait_for_manual_close():
         time.sleep(1)
     
     print("Manual close completed")
+
 def clean_margin_account(symbol):
     """Single pair cleanup function"""
     try:
