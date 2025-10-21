@@ -1,5 +1,3 @@
-# config.py
-
 import os
 from decimal import Decimal
 from dotenv import load_dotenv
@@ -26,6 +24,8 @@ class Colors:
     YELLOW = '\033[93m'
     BLUE = '\033[94m'
     CYAN = '\033[96m'
+    GRAY = '\033[90m'
+    WHITE = '\033[97m'
     END = '\033[0m'
     BOLD = '\033[1m'
 
